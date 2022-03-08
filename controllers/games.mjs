@@ -102,6 +102,11 @@ const makeDeck = function () {
  */
 
 export default function initGamesController(db) {
+
+  let player1Score = 0;
+  let player2Score = 0;
+  let result;
+
   // render the main page
   const index = (request, response) => {
     response.render('games/index');
@@ -111,12 +116,29 @@ export default function initGamesController(db) {
   const create = async (request, response) => {
     // deal out a new shuffled deck for this game.
     const cardDeck = shuffleCards(makeDeck());
-    const playerHand = [cardDeck.pop(), cardDeck.pop()];
+    const player1Card = cardDeck.pop();
+    const player2Card = cardDeck.pop();
+    const playerHand = [player1Card, player2Card];
+
+    if (player1Card.rank > player2Card.rank) {
+      result = 'Player 1 wins!!';
+      player1Score += 1;
+    } else if (player1Card.rank < player2Card.rank) {
+      result = 'Player 2 wins!!';
+      player2Score += 1;
+    } else {
+      result = 'Draw';
+    }
 
     const newGame = {
       gameState: {
         cardDeck,
         playerHand,
+        result,
+        score: {
+          player1: player1Score,
+          player2: player2Score
+        },
       },
     };
 
@@ -129,6 +151,8 @@ export default function initGamesController(db) {
       response.send({
         id: game.id,
         playerHand: game.gameState.playerHand,
+        result: game.gameState.result,
+        score: game.gameState.score,
       });
     } catch (error) {
       response.status(500).send(error);
@@ -142,13 +166,30 @@ export default function initGamesController(db) {
       const game = await db.Game.findByPk(request.params.id);
 
       // make changes to the object
-      const playerHand = [game.gameState.cardDeck.pop(), game.gameState.cardDeck.pop()];
+      const player1Card = game.gameState.cardDeck.pop();
+      const player2Card = game.gameState.cardDeck.pop();
+      const playerHand = [player1Card, player2Card];
+
+      if (player1Card.rank > player2Card.rank) {
+        game.gameState.result = 'Player 1 wins!!';
+        game.gameState.score.player1 += 1;
+      } else if (player1Card.rank < player2Card.rank) {
+        game.gameState.result = 'Player 2 wins!!';
+        game.gameState.score.player2 += 1;
+      } else {
+        game.gameState.result = 'Draw';
+      }
 
       // update the game with the new info
       await game.update({
         gameState: {
           cardDeck: game.gameState.cardDeck,
           playerHand,
+          result: game.gameState.result,
+          score: {
+            player1: game.gameState.score.player1,
+            player2: game.gameState.score.player2
+          },
         },
 
       });
@@ -158,6 +199,8 @@ export default function initGamesController(db) {
       response.send({
         id: game.id,
         playerHand: game.gameState.playerHand,
+        result: game.gameState.result,
+        score: game.gameState.score,
       });
     } catch (error) {
       response.status(500).send(error);
